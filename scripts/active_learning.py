@@ -14,7 +14,7 @@ def test(model, test_loader, device):
     correct = 0
     model.eval()
     with torch.no_grad():
-        predictions = []
+        predictions, probs = [], []
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
@@ -22,9 +22,11 @@ def test(model, test_loader, device):
             pred = output.argmax(dim=1, keepdim=True)    # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
             predictions.append(pred.cpu())
+            probs.append(output.cpu())
     predictions = np.concatenate(predictions).reshape(-1)
+    probs = np.concatenate(probs)
     acc = correct / len(predictions)
-    return test_loss, acc, predictions
+    return test_loss, acc, predictions, probs
 
 def train(model, train_loader, valid_loader, device, 
                     EPOCHS=50, LOG_INTERVAL=10, PATIENCE=5, verbose=True):
@@ -46,7 +48,7 @@ def train(model, train_loader, valid_loader, device,
             total_loss += loss.item()
         
         # calculate validation
-        valid_loss, valid_acc, predictions = test(model, valid_loader, device)
+        valid_loss, valid_acc, predictions, probs = test(model, valid_loader, device)
         if valid_acc > best_acc:
             best_acc = valid_acc
         else:
@@ -77,7 +79,10 @@ def uncertainty_sampling(model, train_loader, pool_idx, n, device):
     outputs = np.concatenate(outputs)
 
     # max entropy
-    H = scipy.stats.entropy(scipy.special.softmax(outputs, axis=1), axis=1)
+    probs = scipy.special.softmax(outputs, axis=1)
+    H = scipy.stats.entropy(probs, axis=1)
+    results.add_result('probs', probs.tolist())
+
     sorted_idx = H.argsort()
     sorted_idx = sorted_idx[np.isin(sorted_idx, pool_idx)]
 
@@ -114,6 +119,7 @@ def active_learning(sampling_func, model_class, dataset1, train_loader, valid_lo
     train_idx = sample_balanced(pool_idx, int(DATA_PER_ROUND/len(classes)), dataset1.targets[pool_idx], classes)
     pool_idx = np.setdiff1d(pool_idx, train_idx)
     
+    global results
     results = al_results()
 
     for round in range(1, ROUNDS+1):
@@ -128,10 +134,11 @@ def active_learning(sampling_func, model_class, dataset1, train_loader, valid_lo
         train(model, it_train_loader, valid_loader, device, **kwargs)
 
         # test
-        test_loss, test_acc, predictions = test(model, test_loader, device)
+        test_loss, test_acc, predictions, probs = test(model, test_loader, device)
         results.add_result('train_size', len(train_idx))
         results.add_result('train_idx', train_idx.tolist())
         results.add_result('test_acc', test_acc)
+        results.add_result('test_predictions', predictions.tolist())
         
         # sample
         new_idx = sampling_func(model, train_loader, pool_idx, DATA_PER_ROUND, device)

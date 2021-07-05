@@ -1,5 +1,4 @@
 import os, csv
-from active_learning_wilds import *
 import time
 import argparse
 import numpy as np
@@ -8,6 +7,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import sys
+import pdb
 from collections import defaultdict
 
 # wilds github
@@ -235,22 +235,22 @@ def main():
 
 
     # do active learning here
-    from active_learning import active_learning, random_sampling, uncertainty_sampling
+    from active_learning_wilds import active_learning, random_sampling, uncertainty_sampling
 
     classes = np.unique(datasets['train']['dataset'].y_array)
     strategies = {'rs':random_sampling, 'us':uncertainty_sampling}
-    measures = {'civilcomments':'acc_wg', 'amazon':'10th_percentile_acc'}
 
     al_strategy = strategies[config.al_strategy]
-    test_measure = measures[config.dataset]
-    active_learning(al_strategy, full_dataset, datasets, np.arange(len(datasets['train']['dataset'])), config, train_grouper,
-            classes=classes, test_measure=test_measure)
-
+    results = active_learning(al_strategy, full_dataset, datasets, np.arange(len(datasets['train']['dataset'])), config, train_grouper,
+            classes=classes)
 
     logger.close()
     for split in datasets:
         datasets[split]['eval_logger'].close()
         datasets[split]['algo_logger'].close()
+
+
+    results.save(os.path.join(config.log_dir, '%s_%s_%s.jsonl' % (config.dataset, config.al_strategy, config.exp_id)))
 
 if __name__=='__main__':
     main()

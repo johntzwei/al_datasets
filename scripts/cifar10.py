@@ -44,7 +44,7 @@ dataset1 = datasets.CIFAR10('../data', train=True, download=True,
                         transform=transform)
 train_loader = torch.utils.data.DataLoader(dataset1, batch_size=args.batch_size)
 
-dataset2 = datasets.CIFAR10('../data', train=True,
+dataset2 = datasets.CIFAR10('../data', train=False,
                         transform=transform)
 test_loader = torch.utils.data.DataLoader(dataset2, batch_size=args.batch_size)
 
@@ -106,4 +106,4 @@ elif args.al_sampling_method == 'uncertainty':
 
 dataset1.targets = np.array(dataset1.targets)
 results = active_learning(sampling_method, Net, dataset1, train_loader, valid_loader, test_loader, classes, pool_idx, device, ROUNDS=args.rounds, TOTAL_DATA=args.total_data, EPOCHS=args.epochs, PATIENCE=args.patience)
-results.save(os.path.join(args.experiment_path, 'cifar_%s_%d.jsonl' % (args.al_sampling_method, args.experiment_id))
+results.save(os.path.join(args.experiment_path, 'cifar_%s_%d.jsonl' % (args.al_sampling_method, args.experiment_id)))
