@@ -23,6 +23,7 @@ def test(model, test_loader, device):
     model.eval()
     with torch.no_grad():
         predictions = []
+        outputs = []
         for batch in tqdm(test_loader):
             data, target, groups = batch[0], batch[1], batch[2]
             data = data.to(device)
@@ -39,12 +40,12 @@ def sample_balanced(pool_idx, n_per_class, targets, classes):
     idxs = []
     for c in classes:
         pool_class_idx = pool_idx[targets == c]
-        idx = np.random.choice(pool_class_idx, size=n_per_class)
+        idx = np.random.choice(pool_class_idx, replace=False, size=n_per_class)
         idxs.append(idx)
     return np.concatenate(idxs)
 
 def random_sampling(model, train_loader, pool_idx, n, device):
-    return np.random.choice(pool_idx, size=n)
+    return np.random.choice(pool_idx, replace=False, size=n)
 
 def uncertainty_sampling(model, train_loader, pool_idx, n, device):
     # generate answers
@@ -53,13 +54,29 @@ def uncertainty_sampling(model, train_loader, pool_idx, n, device):
     # max entropy
     probs = scipy.special.softmax(outputs, axis=1)
     H = scipy.stats.entropy(probs, axis=1)
-    results.add_result('probs', probs.tolist())
+
+    # this is the train data
+    # results.add_result('probs', probs.tolist())
 
     sorted_idx = H.argsort()
     sorted_idx = sorted_idx[np.isin(sorted_idx, pool_idx)]
 
     # larger is more uncertain
     return sorted_idx[:-n-1:-1]
+
+def certainty_sampling(model, train_loader, pool_idx, n, device):
+    # generate answers
+    test_loss, acc, outputs = test(model, train_loader, device)
+
+    # max entropy
+    probs = scipy.special.softmax(outputs, axis=1)
+
+    # positive class
+    sorted_idx = probs[:,1].argsort()
+    sorted_idx = sorted_idx[np.isin(sorted_idx, pool_idx)]
+
+    return sorted_idx[:-n:-1]
+
 
 class al_results:
     def __init__(self):
@@ -80,10 +97,13 @@ def active_learning(sampling_func, full_dataset, datasets, pool_idx,
                 config, train_grouper, classes=[0,1], verbose=True, **kwargs):
     # sample balanced
     DATA_PER_ROUND = int(config.total_data / config.rounds)
-    train_idx = sample_balanced(pool_idx, 
-            int(DATA_PER_ROUND/len(classes)), 
-            datasets['train']['dataset'].y_array[pool_idx], 
-            classes)
+    if config.start_balanced:
+        train_idx = sample_balanced(pool_idx, 
+                int(DATA_PER_ROUND/len(classes)), 
+                datasets['train']['dataset'].y_array[pool_idx], 
+                classes)
+    else:
+        train_idx = np.random.choice(pool_idx, size=DATA_PER_ROUND, replace=False)
     pool_idx = np.setdiff1d(pool_idx, train_idx)
     
     global results
@@ -110,7 +130,7 @@ def active_learning(sampling_func, full_dataset, datasets, pool_idx,
         al_datasets['train'] = copy.copy(datasets['train'])
         al_datasets['val'] = copy.copy(datasets['val'])
         al_datasets['train']['loader'] = it_train_loader
-        al_datasets['val']['loader'] = [next(iter(datasets['val']['loader']))]
+        al_datasets['val']['loader'] = datasets['val']['loader']
 
         train(
                 algorithm=algorithm,
@@ -133,7 +153,7 @@ def active_learning(sampling_func, full_dataset, datasets, pool_idx,
         results.add_result('train_size', len(train_idx))
         results.add_result('train_idx', train_idx.tolist())
         results.add_result('test_acc', test_acc)
-        results.add_result('test_preds', predictions.tolist())
+        results.add_result('test_outs', predictions.tolist())
         results.add_result('evals', evals)
         
         # sample

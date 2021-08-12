@@ -36,7 +36,7 @@ def train(model, train_loader, valid_loader, device,
     for epoch in range(1, EPOCHS+1):
         model.train()
         total_loss = 0.
-        for data, target in train_loader:
+        for data, color, target in train_loader:
             data, target = data.to(device), target.to(device)
             batch_idx += 1
             optimizer.zero_grad()
@@ -81,7 +81,7 @@ def uncertainty_sampling(model, train_loader, pool_idx, n, device):
     # max entropy
     probs = scipy.special.softmax(outputs, axis=1)
     H = scipy.stats.entropy(probs, axis=1)
-    results.add_result('probs', probs.tolist())
+    #results.add_result('probs', probs.tolist())
 
     sorted_idx = H.argsort()
     sorted_idx = sorted_idx[np.isin(sorted_idx, pool_idx)]
