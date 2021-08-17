@@ -2,7 +2,7 @@
 #SBATCH --job-name=al_wilds
 #SBATCH --gres=gpu:2080:1
 #SBATCH --ntasks=1
-#SBATCH --array=1-5
+#SBATCH --array=1-3
 
 source activate al_datasets
 

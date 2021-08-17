@@ -10,7 +10,7 @@ for ALPHA in 0 25 50 75 100
 do
     TOKENIZERS_PARALLELISM=false \
     python mnli_subsamp_expt.py \
-        -d civilcomments \
+        -d mnli \
         --algorithm ERM \
         --model distilbert-base-uncased \
         --root_dir ../data \

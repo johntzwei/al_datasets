@@ -334,7 +334,7 @@ def main():
     results.add_round()
     results.add_result('train_size', len(train_idx))
     results.add_result('train_idx', train_idx.tolist())
-    results.add_result('valid_idx', valid_idx.tolist())
+    #results.add_result('valid_idx', valid_idx.tolist())
     results.add_result('test_acc', test_acc)
     results.add_result('test_outs', predictions.tolist())
     results.add_result('evals', evals)
