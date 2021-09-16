@@ -1,6 +1,12 @@
+#!/bin/bash
+#SBATCH --job-name=al_wilds
+#SBATCH --gres=gpu:2080:1
+#SBATCH --ntasks=1
+#SBATCH --array=1-5
+
 source activate al_datasets
 
-CUDA_VISIBLE_DEVICES=2 TOKENIZERS_PARALLELISM=false \
+TOKENIZERS_PARALLELISM=false \
 python wilds_al_expt.py \
     -d mnli \
     --algorithm ERM \

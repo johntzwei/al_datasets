@@ -12,7 +12,7 @@ do
     python mnli_subsamp_expt.py \
         -d mnli \
         --algorithm ERM \
-        --model distilbert-base-uncased \
+        --model roberta-base \
         --root_dir ../data \
         --progress_bar \
         --log_dir ../experiments/mnli_subsamp/ \
